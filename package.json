@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "csv-parse": "^5.6.0",
+    "needle": "^3.3.1"
+  }
+}
