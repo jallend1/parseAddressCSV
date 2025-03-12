@@ -1,7 +1,11 @@
-import { parse } from "csv-parse";
 import { createReadStream } from "fs";
+import dotenv from "dotenv";
+import { parse } from "csv-parse";
 
-const APIKEY = null;
+dotenv.config();
+const APIKEY = process.env.API_KEY;
+console.log(APIKEY);
+
 const APIURL = `https://maps.googleapis.com/maps/api/geocode/json`;
 
 const inputCSVFile = "sampleAddresses.csv";
@@ -20,4 +24,4 @@ async function getAddresses() {
     });
 }
 
-getAddresses();
+// getAddresses();
