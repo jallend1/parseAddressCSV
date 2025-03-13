@@ -1,25 +1,29 @@
 import { createReadStream } from "fs";
-import dotenv from "dotenv";
+import { config } from "dotenv";
 import { parse } from "csv-parse";
 
-dotenv.config();
+config();
 const APIKEY = process.env.API_KEY;
 const APIURL = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
-const sampleAddress = "1600 Amphitheatre Parkway, Mountain View, CA";
+const sampleAddress = "1600 Pennsylvania Avenue NW, Washington, D.C.";
+const sampleLocation = {
+  name: "White House",
+  address: "1600 Pennsylvania Avenue NW, Washington, D.C.",
+};
 const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 
-// const formatAddress = (address) => address.split(" ").join("%20");
+const formatAddress = (address) => address.split(" ").join("%20");
 
-// const fetchAddressCoordinates = async (address) => {
-//   const formattedAddress = formatAddress(address);
-//   const response = await fetch(`${APIURL}&address=${formattedAddress}`);
-//   if (!response.ok) {
-//     throw new Error("Failed to fetch address coordinates");
-//   }
-//   const data = await response.json();
-//   return data.results[0].geometry.location;
-// };
+const fetchAddressCoordinates = async (address) => {
+  const formattedAddress = formatAddress(address);
+  const response = await fetch(`${APIURL}&address=${formattedAddress}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch address coordinates");
+  }
+  const data = await response.json();
+  return data.results[0].geometry.location;
+};
 
 // fetchAddressCoordinates(sampleAddress).then((data) => {
 //   console.log(data);
@@ -40,12 +44,25 @@ async function getAddresses() {
         name: data["Recipient Company"],
         address: data["Recipient Address"],
       };
-
       addresses.push(location);
     })
     .on("end", () => {
-      console.log(addresses);
       console.log("CSV file successfully processed");
+      // *****************************************************
+      // This one will only use one of my precious API credits
+      // *****************************************************
+      fetchAddressCoordinates(sampleLocation.address).then((data) => {
+        sampleLocation.coordinates = data;
+        console.log(sampleLocation);
+      });
+
+      // TODO: This one is real life and will use all my API credits :(
+      // addresses.forEach((location) => {
+      //   fetchAddressCoordinates(location.address).then((data) => {
+      //     location.coordinates = data;
+      //     console.log(location);
+      //   });
+      // });
     });
 }
 
