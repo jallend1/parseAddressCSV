@@ -1,2 +1,2 @@
-name,address,coordinates
-White House,"1600 Pennsylvania Avenue NW, Washington, D.C.","{""lat"":38.8948949,""lng"":-77.0371581}"
+name,address,latitude,longitude
+White House,"1600 Pennsylvania Avenue NW, Washington, D.C.",38.8948949,-77.0371581

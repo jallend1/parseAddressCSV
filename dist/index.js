@@ -25,6 +25,7 @@ const sampleLocation = {
 };
 const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
+// Format address for Google Maps API
 const formatAddress = (address) => address.split(" ").join("%20");
 const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, function* () {
     const formattedAddress = formatAddress(address);
@@ -33,6 +34,7 @@ const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, f
         throw new Error("Failed to fetch address coordinates");
     }
     const data = yield response.json();
+    console.log(data);
     return data.results[0].geometry.location;
 });
 // fetchAddressCoordinates(sampleAddress).then((data) => {
@@ -59,11 +61,15 @@ function getAddresses() {
             // *****************************************************
             // This one will only use one of my precious API credits
             // *****************************************************
-            // fetchAddressCoordinates(sampleLocation.address).then((data) => {
-            //   sampleLocation.coordinates = data;
+            // fetchAddressCoordinates(sampleLocation.address).then(({ lat, lng }) => {
+            //   sampleLocation.latitude = lat;
+            //   sampleLocation.longitude = lng;
             //   stringify(
             //     [sampleLocation],
-            //     { header: true, columns: ["name", "address", "coordinates"] },
+            //     {
+            //       header: true,
+            //       columns: ["name", "address", "latitude", "longitude"],
+            //     },
             //     (err, output) => {
             //       if (err) {
             //         console.error(err);

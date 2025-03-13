@@ -5,19 +5,26 @@ import { stringify } from "csv-stringify";
 
 config();
 const APIKEY = process.env.API_KEY;
-const APIURL = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
-const sampleAddress = "1600 Pennsylvania Avenue NW, Washington, D.C.";
+const APIURL: string = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
+
+// *****************************************************
+// This is just for testing purposes
+// *****************************************************
+const sampleAddress: string = "1600 Pennsylvania Avenue NW, Washington, D.C.";
 const sampleLocation: {
   name: string;
   address: string;
-  coordinates?: { lat: number; lng: number };
+  latitude?: number;
+  longitude?: number;
 } = {
   name: "White House",
   address: "1600 Pennsylvania Avenue NW, Washington, D.C.",
 };
+
 const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 
+// Format address for Google Maps API
 const formatAddress = (address: string) => address.split(" ").join("%20");
 
 const fetchAddressCoordinates = async (address: string) => {
@@ -27,6 +34,7 @@ const fetchAddressCoordinates = async (address: string) => {
     throw new Error("Failed to fetch address coordinates");
   }
   const data = await response.json();
+  console.log(data);
   return data.results[0].geometry.location;
 };
 
@@ -36,7 +44,7 @@ const fetchAddressCoordinates = async (address: string) => {
 // });
 
 async function getAddresses() {
-  const addresses = [];
+  const addresses: { name: string; address: string }[] = [];
   createReadStream(inputCSVFile)
     .pipe(
       parse({
@@ -45,8 +53,7 @@ async function getAddresses() {
           header.map((column: string) => column.trim()), // Recipient Company not working as a key without trim
       })
     )
-    .on("data", (data: any) => {
-      console.log(typeof data);
+    .on("data", (data: { [key: string]: string }) => {
       const location = {
         name: data["Recipient Company"],
         address: data["Recipient Address"],
@@ -58,11 +65,15 @@ async function getAddresses() {
       // *****************************************************
       // This one will only use one of my precious API credits
       // *****************************************************
-      // fetchAddressCoordinates(sampleLocation.address).then((data) => {
-      //   sampleLocation.coordinates = data;
+      // fetchAddressCoordinates(sampleLocation.address).then(({ lat, lng }) => {
+      //   sampleLocation.latitude = lat;
+      //   sampleLocation.longitude = lng;
       //   stringify(
       //     [sampleLocation],
-      //     { header: true, columns: ["name", "address", "coordinates"] },
+      //     {
+      //       header: true,
+      //       columns: ["name", "address", "latitude", "longitude"],
+      //     },
       //     (err, output) => {
       //       if (err) {
       //         console.error(err);
