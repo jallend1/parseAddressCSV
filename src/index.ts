@@ -7,16 +7,20 @@ config();
 const APIKEY = process.env.API_KEY;
 const APIURL = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 const sampleAddress = "1600 Pennsylvania Avenue NW, Washington, D.C.";
-const sampleLocation = {
+const sampleLocation: {
+  name: string;
+  address: string;
+  coordinates?: { lat: number; lng: number };
+} = {
   name: "White House",
   address: "1600 Pennsylvania Avenue NW, Washington, D.C.",
 };
 const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 
-const formatAddress = (address) => address.split(" ").join("%20");
+const formatAddress = (address: string) => address.split(" ").join("%20");
 
-const fetchAddressCoordinates = async (address) => {
+const fetchAddressCoordinates = async (address: string) => {
   const formattedAddress = formatAddress(address);
   const response = await fetch(`${APIURL}&address=${formattedAddress}`);
   if (!response.ok) {
@@ -37,10 +41,12 @@ async function getAddresses() {
     .pipe(
       parse({
         delimiter: ",",
-        columns: (header) => header.map((column) => column.trim()), // Recipient Company not working as a key without trim
+        columns: (header: string[]) =>
+          header.map((column: string) => column.trim()), // Recipient Company not working as a key without trim
       })
     )
-    .on("data", (data) => {
+    .on("data", (data: any) => {
+      console.log(typeof data);
       const location = {
         name: data["Recipient Company"],
         address: data["Recipient Address"],
@@ -52,22 +58,22 @@ async function getAddresses() {
       // *****************************************************
       // This one will only use one of my precious API credits
       // *****************************************************
-      fetchAddressCoordinates(sampleLocation.address).then((data) => {
-        sampleLocation.coordinates = data;
-        stringify(
-          [sampleLocation],
-          { header: true, columns: ["name", "address", "coordinates"] },
-          (err, output) => {
-            if (err) {
-              console.error(err);
-            } else {
-              writeFileSync(outputCSVFile, output);
-              console.log("My god we've done it!");
-            }
-          }
-        );
-        console.log(sampleLocation);
-      });
+      // fetchAddressCoordinates(sampleLocation.address).then((data) => {
+      //   sampleLocation.coordinates = data;
+      //   stringify(
+      //     [sampleLocation],
+      //     { header: true, columns: ["name", "address", "coordinates"] },
+      //     (err, output) => {
+      //       if (err) {
+      //         console.error(err);
+      //       } else {
+      //         writeFileSync(outputCSVFile, output);
+      //         console.log("My god we've done it!");
+      //       }
+      //     }
+      //   );
+      //   console.log(sampleLocation);
+      // });
 
       // TODO: This one is real life and will use all my API credits :(
       // addresses.forEach((location) => {

@@ -1,9 +1,13 @@
 {
-  "type": "module",
+  "type": "commonjs",
   "dependencies": {
     "csv-parse": "^5.6.0",
     "csv-stringify": "^6.5.2",
     "dotenv": "^16.4.7",
     "needle": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2"
   }
 }
