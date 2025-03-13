@@ -1,6 +1,7 @@
-import { createReadStream } from "fs";
+import { createReadStream, writeFileSync } from "fs";
 import { config } from "dotenv";
 import { parse } from "csv-parse";
+import { stringify } from "csv-stringify";
 
 config();
 const APIKEY = process.env.API_KEY;
@@ -53,6 +54,18 @@ async function getAddresses() {
       // *****************************************************
       fetchAddressCoordinates(sampleLocation.address).then((data) => {
         sampleLocation.coordinates = data;
+        stringify(
+          [sampleLocation],
+          { header: true, columns: ["name", "address", "coordinates"] },
+          (err, output) => {
+            if (err) {
+              console.error(err);
+            } else {
+              writeFileSync(outputCSVFile, output);
+              console.log("My god we've done it!");
+            }
+          }
+        );
         console.log(sampleLocation);
       });
 
