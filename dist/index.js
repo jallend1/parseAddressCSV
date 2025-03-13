@@ -12,10 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = require("fs");
 const dotenv_1 = require("dotenv");
 const csv_parse_1 = require("csv-parse");
-const csv_stringify_1 = require("csv-stringify");
 (0, dotenv_1.config)();
 const APIKEY = process.env.API_KEY;
 const APIURL = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
+// *****************************************************
+// This is just for testing purposes
+// *****************************************************
 const sampleAddress = "1600 Pennsylvania Avenue NW, Washington, D.C.";
 const sampleLocation = {
     name: "White House",
@@ -57,19 +59,22 @@ function getAddresses() {
             // *****************************************************
             // This one will only use one of my precious API credits
             // *****************************************************
-            fetchAddressCoordinates(sampleLocation.address).then((data) => {
-                sampleLocation.coordinates = data;
-                (0, csv_stringify_1.stringify)([sampleLocation], { header: true, columns: ["name", "address", "coordinates"] }, (err, output) => {
-                    if (err) {
-                        console.error(err);
-                    }
-                    else {
-                        (0, fs_1.writeFileSync)(outputCSVFile, output);
-                        console.log("My god we've done it!");
-                    }
-                });
-                console.log(sampleLocation);
-            });
+            // fetchAddressCoordinates(sampleLocation.address).then((data) => {
+            //   sampleLocation.coordinates = data;
+            //   stringify(
+            //     [sampleLocation],
+            //     { header: true, columns: ["name", "address", "coordinates"] },
+            //     (err, output) => {
+            //       if (err) {
+            //         console.error(err);
+            //       } else {
+            //         writeFileSync(outputCSVFile, output);
+            //         console.log("My god we've done it!");
+            //       }
+            //     }
+            //   );
+            //   console.log(sampleLocation);
+            // });
             // TODO: This one is real life and will use all my API credits :(
             // addresses.forEach((location) => {
             //   fetchAddressCoordinates(location.address).then((data) => {
