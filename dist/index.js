@@ -16,12 +16,30 @@ const csv_stringify_1 = require("csv-stringify");
 (0, dotenv_1.config)();
 const APIKEY = process.env.API_KEY;
 const APIURL = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
-// const inputCSVFile = "raw-sample.csv";
+const inputCSVDirectory = "./data/";
+const inputCSVFile = "raw-sample.csv";
 // const inputCSVFile = "smallBatch.csv";
 // const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 // Format address for Google Maps API
 const formatAddress = (address) => address.split(" ").join("%20");
+// Read the input CSV directory and iterate through the files
+// TODO: Adjust app to handle a directory of files instead of a single file
+// async function readInputCSVDirectory() {
+//   const files = readdirSync(inputCSVDirectory);
+//   if (!files) {
+//     console.error("No files found in the directory");
+//     return;
+//   }
+//   if (files.filter((file) => file.endsWith(".csv")).length === 0) {
+//     console.error("No CSV files found in the directory");
+//     return;
+//   }
+//   for (const file of files) {
+// TODO: Refactor getAddresses to process multiple files
+//     await handleCSVFile(file);
+//   }
+// }
 const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, function* () {
     const formattedAddress = formatAddress(address);
     const response = yield fetch(`${APIURL}&address=${formattedAddress}`);
@@ -50,7 +68,9 @@ function getAddresses() {
         (0, fs_1.createReadStream)(inputCSVFile)
             .pipe((0, csv_parse_1.parse)({
             delimiter: ",",
-            columns: (header) => header.map((column) => column.trim()), // Recipient Company not working as a key without trim
+            columns: (header) => 
+            // Recipient Company not working as a key without trim
+            header.map((column) => column.trim()),
         }))
             .on("data", (data) => {
             // If the transaction date is empty, skip this row (Original file has these spread throughout)

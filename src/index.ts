@@ -1,4 +1,4 @@
-import { createReadStream, writeFileSync } from "fs";
+import { createReadStream, writeFileSync, readdirSync } from "fs";
 import { config } from "dotenv";
 import { parse } from "csv-parse";
 import { stringify } from "csv-stringify";
@@ -7,13 +7,32 @@ config();
 const APIKEY = process.env.API_KEY;
 const APIURL: string = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 
-// const inputCSVFile = "raw-sample.csv";
+const inputCSVDirectory = "./data/";
+const inputCSVFile = "raw-sample.csv";
 // const inputCSVFile = "smallBatch.csv";
 // const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 
 // Format address for Google Maps API
 const formatAddress = (address: string) => address.split(" ").join("%20");
+
+// Read the input CSV directory and iterate through the files
+// TODO: Adjust app to handle a directory of files instead of a single file
+// async function readInputCSVDirectory() {
+//   const files = readdirSync(inputCSVDirectory);
+//   if (!files) {
+//     console.error("No files found in the directory");
+//     return;
+//   }
+//   if (files.filter((file) => file.endsWith(".csv")).length === 0) {
+//     console.error("No CSV files found in the directory");
+//     return;
+//   }
+//   for (const file of files) {
+// TODO: Refactor getAddresses to process multiple files
+//     await handleCSVFile(file);
+//   }
+// }
 
 const fetchAddressCoordinates = async (address: string) => {
   const formattedAddress = formatAddress(address);
@@ -49,12 +68,14 @@ async function getAddresses() {
     latitude?: number;
     longitude?: number;
   }[] = [];
+
   createReadStream(inputCSVFile)
     .pipe(
       parse({
         delimiter: ",",
         columns: (header: string[]) =>
-          header.map((column: string) => column.trim()), // Recipient Company not working as a key without trim
+          // Recipient Company not working as a key without trim
+          header.map((column: string) => column.trim()),
       })
     )
     .on("data", (data: { [key: string]: string }) => {
@@ -80,6 +101,7 @@ async function getAddresses() {
         const existingLocation = addresses.find(
           (addr) => addr.address === location.address
         );
+
         // If it does, use the existing coordinates
         if (existingLocation && existingLocation.latitude) {
           location.latitude = existingLocation.latitude;
