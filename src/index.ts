@@ -7,6 +7,7 @@ config();
 const APIKEY = process.env.API_KEY;
 const APIURL: string = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 
+// const inputCSVFile = "raw-sample.csv";
 const inputCSVFile = "smallBatch.csv";
 // const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
@@ -56,9 +57,19 @@ async function getAddresses() {
       })
     )
     .on("data", (data: { [key: string]: string }) => {
+      // If the transaction date is empty, skip this row (Original file has these spread throughout)
+      if (data["Transaction Date"] === "") return;
+
+      // If the recipient company name is empty, the recipient name has the desired info
+      let name;
+      data["Recipient Company"] === ""
+        ? (name = data["Recipient Name"])
+        : (name = data["Recipient Company"]);
+
       const location = {
-        name: data["Recipient Company"],
+        name: name,
         address: data["Recipient Address"],
+        date: data["Transaction Date"],
       };
       addresses.push(location);
     })
@@ -91,7 +102,6 @@ async function getAddresses() {
           }
         }
       });
-
       // Wait for all fetches to complete, so I don't write to the file before all coordinates are fetched (AGAIN)
       await Promise.all(fetchPromises);
 
@@ -99,7 +109,7 @@ async function getAddresses() {
         addresses,
         {
           header: true,
-          columns: ["name", "address", "latitude", "longitude"],
+          columns: ["name", "address", "date", "latitude", "longitude"],
         },
         (err, output) => {
           if (err) {
