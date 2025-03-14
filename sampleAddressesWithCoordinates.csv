@@ -1,4 +1,10 @@
-name,address,latitude,longitude
-Missouri River Regional Library,PO Box 89 214 Adams St Jefferson City MO 65102-0089,38.5747515,-92.1685449
-Evansville Vanderburgh Public Library,200 SE M L King Blvd Evansville IN 47713-1802,37.9713907,-87.5654024
-Los Alamos County Library System,2400 Central Ave Los Alamos NM 87544-4055,35.8829672,-106.3039952
+name,address,date,latitude,longitude
+University of Maine,5729 Fogler Library Orono ME 04469-5729,7/8/2024,44.8994046,-68.6692796
+Napa County Library,580 Coombs St Napa CA 94559-3396,7/8/2024,38.2954926,-122.2838724
+The Master's University,21726 Placerita Cyn Rd Santa Clarita CA 91321-1200,7/8/2024,34.3816482,-118.5194302
+North Bingham County District Library,197 W Locust St Shelley ID 83274-1309,7/8/2024,43.3782558,-112.1244859
+Marshall Public Library,113 S Garfield Ave Pocatello ID 83204-3235,7/8/2024,42.86029569999999,-112.4525839
+Allen County Public Library,900 Library Plz Fort Fort Wayne IN 46802-3699,7/8/2024,41.0771709,-85.14323689999999
+Bonner Springs City Library,201 N Nettleton Ave Bonner Springs KS 66012-1447,7/8/2024,39.0605173,-94.8836085
+Lisle Library District,777 Front St Lisle IL 60532-3599,7/8/2024,41.7964317,-88.06693659999999
+Oak Lawn Public Library,9427 Raymond Ave Oak Lawn IL 60453-2466,7/8/2024,41.72031010000001,-87.7522678

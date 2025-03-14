@@ -8,7 +8,7 @@ const APIKEY = process.env.API_KEY;
 const APIURL: string = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 
 // const inputCSVFile = "raw-sample.csv";
-const inputCSVFile = "smallBatch.csv";
+// const inputCSVFile = "smallBatch.csv";
 // const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 
@@ -45,6 +45,7 @@ async function getAddresses() {
   const addresses: {
     name: string;
     address: string;
+    date: string;
     latitude?: number;
     longitude?: number;
   }[] = [];

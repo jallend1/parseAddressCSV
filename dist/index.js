@@ -17,7 +17,7 @@ const csv_stringify_1 = require("csv-stringify");
 const APIKEY = process.env.API_KEY;
 const APIURL = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 // const inputCSVFile = "raw-sample.csv";
-const inputCSVFile = "smallBatch.csv";
+// const inputCSVFile = "smallBatch.csv";
 // const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 // Format address for Google Maps API
