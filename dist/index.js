@@ -34,7 +34,6 @@ const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, f
         throw new Error("Failed to fetch address coordinates");
     }
     const data = yield response.json();
-    console.log(data);
     return data.results[0].geometry.location;
 });
 // fetchAddressCoordinates(sampleAddress).then((data) => {
@@ -58,6 +57,22 @@ function getAddresses() {
         })
             .on("end", () => {
             console.log("CSV file successfully processed");
+            addresses.forEach((location) => {
+                // Check if address already exists in the array
+                const existingLocation = addresses.find((addr) => addr.address === location.address);
+                // If it does, use the existing coordinates
+                if (existingLocation && existingLocation.latitude) {
+                    location.latitude = existingLocation.latitude;
+                    location.longitude = existingLocation.longitude;
+                }
+                // If it doesn't, fetch the coordinates
+                else {
+                    fetchAddressCoordinates(location.address).then(({ lat, lng }) => {
+                        location.latitude = lat;
+                        location.longitude = lng;
+                    });
+                }
+            });
             // *****************************************************
             // This one will only use one of my precious API credits
             // *****************************************************
