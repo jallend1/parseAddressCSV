@@ -7,21 +7,8 @@ config();
 const APIKEY = process.env.API_KEY;
 const APIURL: string = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 
-// *****************************************************
-// This is just for testing purposes
-// *****************************************************
-const sampleAddress: string = "1600 Pennsylvania Avenue NW, Washington, D.C.";
-const sampleLocation: {
-  name: string;
-  address: string;
-  latitude?: number;
-  longitude?: number;
-} = {
-  name: "White House",
-  address: "1600 Pennsylvania Avenue NW, Washington, D.C.",
-};
-
-const inputCSVFile = "sampleAddresses.csv";
+const inputCSVFile = "smallBatch.csv";
+// const inputCSVFile = "sampleAddresses.csv";
 const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 
 // Format address for Google Maps API
@@ -34,13 +21,24 @@ const fetchAddressCoordinates = async (address: string) => {
     throw new Error("Failed to fetch address coordinates");
   }
   const data = await response.json();
-  return data.results[0].geometry.location;
-};
 
-// fetchAddressCoordinates(sampleAddress).then((data) => {
-//   console.log(data);
-//   // Sample return: { lat: 37.4220113, lng: -122.0847483 }
-// });
+  // Sample return: { lat: 37.4220113, lng: -122.0847483 }
+  // If the status is ZERO_RESULTS, return 0s
+  if (data.status === "ZERO_RESULTS") {
+    return { lat: 0, lng: 0 };
+  }
+
+  // If the geometry object is not present, return 0s
+  if (!data.results[0].geometry) {
+    return { lat: 0, lng: 0 };
+  }
+
+  // Return the coordinates of the first result
+  return {
+    lat: data.results[0].geometry.location.lat,
+    lng: data.results[0].geometry.location.lng,
+  };
+};
 
 async function getAddresses() {
   const addresses: {
@@ -64,9 +62,8 @@ async function getAddresses() {
       };
       addresses.push(location);
     })
-    .on("end", () => {
-      console.log("CSV file successfully processed");
-      addresses.forEach((location) => {
+    .on("end", async () => {
+      const fetchPromises = addresses.map(async (location) => {
         // Check if address already exists in the array
         const existingLocation = addresses.find(
           (addr) => addr.address === location.address
@@ -78,44 +75,41 @@ async function getAddresses() {
         }
         // If it doesn't, fetch the coordinates
         else {
-          fetchAddressCoordinates(location.address).then(({ lat, lng }) => {
+          try {
+            const { lat, lng } = await fetchAddressCoordinates(
+              location.address
+            );
             location.latitude = lat;
             location.longitude = lng;
-          });
+          } catch (error) {
+            // Return 0s for coordinates if fetch fails
+            console.error(
+              "Failed to fetch coordinates for: " + location.address
+            );
+            location.latitude = 0;
+            location.longitude = 0;
+          }
         }
       });
 
-      // *****************************************************
-      // This one will only use one of my precious API credits
-      // *****************************************************
-      // fetchAddressCoordinates(sampleLocation.address).then(({ lat, lng }) => {
-      //   sampleLocation.latitude = lat;
-      //   sampleLocation.longitude = lng;
-      //   stringify(
-      //     [sampleLocation],
-      //     {
-      //       header: true,
-      //       columns: ["name", "address", "latitude", "longitude"],
-      //     },
-      //     (err, output) => {
-      //       if (err) {
-      //         console.error(err);
-      //       } else {
-      //         writeFileSync(outputCSVFile, output);
-      //         console.log("My god we've done it!");
-      //       }
-      //     }
-      //   );
-      //   console.log(sampleLocation);
-      // });
+      // Wait for all fetches to complete, so I don't write to the file before all coordinates are fetched (AGAIN)
+      await Promise.all(fetchPromises);
 
-      // TODO: This one is real life and will use all my API credits :(
-      // addresses.forEach((location) => {
-      //   fetchAddressCoordinates(location.address).then((data) => {
-      //     location.coordinates = data;
-      //     console.log(location);
-      //   });
-      // });
+      stringify(
+        addresses,
+        {
+          header: true,
+          columns: ["name", "address", "latitude", "longitude"],
+        },
+        (err, output) => {
+          if (err) {
+            console.error(err);
+          } else {
+            writeFileSync(outputCSVFile, output);
+            console.log("My god we've done it!");
+          }
+        }
+      );
     });
 }
 
