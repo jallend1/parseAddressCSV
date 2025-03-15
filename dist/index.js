@@ -24,22 +24,24 @@ const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 // Format address for Google Maps API
 const formatAddress = (address) => address.split(" ").join("%20");
 // Read the input CSV directory and iterate through the files
-// TODO: Adjust app to handle a directory of files instead of a single file
-// async function readInputCSVDirectory() {
-//   const files = readdirSync(inputCSVDirectory);
-//   if (!files) {
-//     console.error("No files found in the directory");
-//     return;
-//   }
-//   if (files.filter((file) => file.endsWith(".csv")).length === 0) {
-//     console.error("No CSV files found in the directory");
-//     return;
-//   }
-//   for (const file of files) {
-// TODO: Refactor getAddresses to process multiple files
-//     await handleCSVFile(file);
-//   }
-// }
+function readInputCSVDirectory() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const files = (0, fs_1.readdirSync)(inputCSVDirectory);
+        if (!files) {
+            console.error("No files found in the directory");
+            return;
+        }
+        if (files.filter((file) => file.endsWith(".csv")).length === 0) {
+            console.error("No CSV files found in the directory");
+            return;
+        }
+        for (const file of files) {
+            // TODO: Refactor getAddresses to process multiple files
+            // In addition to the file name, pass the file path to getAddresses
+            handleCSVFile(inputCSVDirectory + file);
+        }
+    });
+}
 const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, function* () {
     const formattedAddress = formatAddress(address);
     const response = yield fetch(`${APIURL}&address=${formattedAddress}`);
@@ -62,10 +64,10 @@ const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, f
         lng: data.results[0].geometry.location.lng,
     };
 });
-function getAddresses() {
+function handleCSVFile(file) {
     return __awaiter(this, void 0, void 0, function* () {
         const addresses = [];
-        (0, fs_1.createReadStream)(inputCSVFile)
+        (0, fs_1.createReadStream)(file)
             .pipe((0, csv_parse_1.parse)({
             delimiter: ",",
             columns: (header) => 
@@ -122,11 +124,12 @@ function getAddresses() {
                     console.error(err);
                 }
                 else {
-                    (0, fs_1.writeFileSync)(outputCSVFile, output);
+                    (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
                     console.log("My god we've done it!");
                 }
             });
         }));
     });
 }
-getAddresses();
+// getAddresses();
+readInputCSVDirectory();

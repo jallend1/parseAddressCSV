@@ -1,4 +1,4 @@
-import { createReadStream, writeFileSync, readdirSync } from "fs";
+import { createReadStream, writeFileSync, readdirSync, read } from "fs";
 import { config } from "dotenv";
 import { parse } from "csv-parse";
 import { stringify } from "csv-stringify";
@@ -17,22 +17,22 @@ const outputCSVFile = "sampleAddressesWithCoordinates.csv";
 const formatAddress = (address: string) => address.split(" ").join("%20");
 
 // Read the input CSV directory and iterate through the files
-// TODO: Adjust app to handle a directory of files instead of a single file
-// async function readInputCSVDirectory() {
-//   const files = readdirSync(inputCSVDirectory);
-//   if (!files) {
-//     console.error("No files found in the directory");
-//     return;
-//   }
-//   if (files.filter((file) => file.endsWith(".csv")).length === 0) {
-//     console.error("No CSV files found in the directory");
-//     return;
-//   }
-//   for (const file of files) {
-// TODO: Refactor getAddresses to process multiple files
-//     await handleCSVFile(file);
-//   }
-// }
+async function readInputCSVDirectory() {
+  const files = readdirSync(inputCSVDirectory);
+  if (!files) {
+    console.error("No files found in the directory");
+    return;
+  }
+  if (files.filter((file) => file.endsWith(".csv")).length === 0) {
+    console.error("No CSV files found in the directory");
+    return;
+  }
+  for (const file of files) {
+    // TODO: Refactor getAddresses to process multiple files
+    // In addition to the file name, pass the file path to getAddresses
+    handleCSVFile(inputCSVDirectory + file);
+  }
+}
 
 const fetchAddressCoordinates = async (address: string) => {
   const formattedAddress = formatAddress(address);
@@ -60,7 +60,7 @@ const fetchAddressCoordinates = async (address: string) => {
   };
 };
 
-async function getAddresses() {
+async function handleCSVFile(file: string) {
   const addresses: {
     name: string;
     address: string;
@@ -69,7 +69,7 @@ async function getAddresses() {
     longitude?: number;
   }[] = [];
 
-  createReadStream(inputCSVFile)
+  createReadStream(file)
     .pipe(
       parse({
         delimiter: ",",
@@ -138,7 +138,7 @@ async function getAddresses() {
           if (err) {
             console.error(err);
           } else {
-            writeFileSync(outputCSVFile, output);
+            writeFileSync(outputCSVFile, output, { flag: "a" });
             console.log("My god we've done it!");
           }
         }
@@ -146,4 +146,5 @@ async function getAddresses() {
     });
 }
 
-getAddresses();
+// getAddresses();
+readInputCSVDirectory();
