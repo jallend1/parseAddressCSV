@@ -20,6 +20,7 @@ const inputCSVDirectory = "./data/";
 const outputCSVFile = "withCoordinates.csv";
 // Stores addresses and coordinates to limit repetitive API calls
 const addressBook = [];
+// Stores the addresses to search in the current batch
 const currentAddressSearches = [];
 // Format address for Google Maps API
 const formatAddress = (address) => address.split(" ").join("%20");

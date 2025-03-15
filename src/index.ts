@@ -16,6 +16,7 @@ const addressBook: {
   longitude: number;
 }[] = [];
 
+// Stores the addresses to search in the current batch
 const currentAddressSearches: {
   name: string;
   address: string;
