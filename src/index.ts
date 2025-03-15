@@ -16,6 +16,14 @@ const addressBook: {
   longitude: number;
 }[] = [];
 
+const currentAddressSearches: {
+  name: string;
+  address: string;
+  date: string;
+  latitude?: number;
+  longitude?: number;
+}[] = [];
+
 // Format address for Google Maps API
 const formatAddress = (address: string) => address.split(" ").join("%20");
 
@@ -27,12 +35,14 @@ async function readInputCSVDirectory() {
     return;
   }
   if (files.filter((file) => file.endsWith(".csv")).length === 0) {
-    console.error("No CSV files found in the directory");
+    console.error("No compatible files found in the directory");
     return;
   }
   // If there are files in the directory, check if the outut file already exists and load the existing addresses to search first
   if (existsSync(outputCSVFile)) loadExistingAddresses(outputCSVFile);
   return;
+
+  // TODO: Uncomment this when pre-API debugging is done
   for (const file of files) {
     handleCSVFile(inputCSVDirectory + file);
   }
@@ -88,14 +98,6 @@ const fetchAddressCoordinates = async (address: string) => {
 };
 
 async function handleCSVFile(file: string) {
-  const addresses: {
-    name: string;
-    address: string;
-    date: string;
-    latitude?: number;
-    longitude?: number;
-  }[] = [];
-
   createReadStream(file)
     .pipe(
       parse({
@@ -120,22 +122,13 @@ async function handleCSVFile(file: string) {
         address: data["Recipient Address"],
         date: data["Transaction Date"],
       };
-      addresses.push(location);
+      currentAddressSearches.push(location);
     })
     .on("end", async () => {
-      const fetchPromises = addresses.map(async (location) => {
-        // Check if address already exists in the array
-        const existingLocation = addresses.find(
-          (addr) => addr.address === location.address
-        );
-
-        // If it does, use the existing coordinates
-        if (existingLocation && existingLocation.latitude) {
-          location.latitude = existingLocation.latitude;
-          location.longitude = existingLocation.longitude;
-        }
-        // If it doesn't, fetch the coordinates
-        else {
+      const fetchPromises = currentAddressSearches.map(async (location) => {
+        coordinatesExist(location);
+        // If location already has coordinates, skip the fetch
+        if (!location.latitude) {
           try {
             const { lat, lng } = await fetchAddressCoordinates(
               location.address
@@ -154,26 +147,62 @@ async function handleCSVFile(file: string) {
       });
       // Wait for all fetches to complete, so I don't write to the file before all coordinates are fetched (AGAIN)
       await Promise.all(fetchPromises);
-
-      const fileExists = existsSync(outputCSVFile);
-      // If output file doesn't already exist, include the headers
-      stringify(
-        addresses,
-        {
-          header: !fileExists,
-          columns: ["name", "address", "date", "latitude", "longitude"],
-        },
-        (err, output) => {
-          if (err) {
-            console.error(err);
-          } else {
-            writeFileSync(outputCSVFile, output, { flag: "a" });
-            console.log("My god we've done it!");
-          }
-        }
-      );
+      writeOutputCSV(currentAddressSearches);
     });
 }
 
-// getAddresses();
+const coordinatesExist = (location: {
+  name: string;
+  address: string;
+  date: string;
+  latitude?: number;
+  longitude?: number;
+}) => {
+  // Check if address already exists in the current batch
+  const existsInCurrentArray = currentAddressSearches.find(
+    (addr) => addr.address === location.address
+  );
+  if (existsInCurrentArray && existsInCurrentArray.latitude) {
+    location.latitude = existsInCurrentArray.latitude;
+    location.longitude = existsInCurrentArray.longitude;
+    return;
+  }
+  // If it doesn't, check the address book
+  const existsInAddressBook = addressBook.find(
+    (addr) => addr.address === location.address
+  );
+  if (existsInAddressBook) {
+    location.latitude = existsInAddressBook.latitude;
+    location.longitude = existsInAddressBook.longitude;
+  }
+};
+
+const writeOutputCSV = (
+  addresses: {
+    name: string;
+    address: string;
+    date: string;
+    latitude?: number;
+    longitude?: number;
+  }[]
+) => {
+  const fileExists = existsSync(outputCSVFile);
+  // If output file doesn't already exist, include the headers
+  stringify(
+    addresses,
+    {
+      header: !fileExists,
+      columns: ["name", "address", "date", "latitude", "longitude"],
+    },
+    (err, output) => {
+      if (err) {
+        console.error(err);
+      } else {
+        writeFileSync(outputCSVFile, output, { flag: "a" });
+        console.log("My god we've done it!");
+      }
+    }
+  );
+};
+
 readInputCSVDirectory();

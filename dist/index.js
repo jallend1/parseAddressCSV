@@ -20,6 +20,7 @@ const inputCSVDirectory = "./data/";
 const outputCSVFile = "withCoordinates.csv";
 // Stores addresses and coordinates to limit repetitive API calls
 const addressBook = [];
+const currentAddressSearches = [];
 // Format address for Google Maps API
 const formatAddress = (address) => address.split(" ").join("%20");
 // Read the input CSV directory and iterate through the files
@@ -31,13 +32,14 @@ function readInputCSVDirectory() {
             return;
         }
         if (files.filter((file) => file.endsWith(".csv")).length === 0) {
-            console.error("No CSV files found in the directory");
+            console.error("No compatible files found in the directory");
             return;
         }
         // If there are files in the directory, check if the outut file already exists and load the existing addresses to search first
         if ((0, fs_1.existsSync)(outputCSVFile))
             loadExistingAddresses(outputCSVFile);
         return;
+        // TODO: Uncomment this when pre-API debugging is done
         for (const file of files) {
             handleCSVFile(inputCSVDirectory + file);
         }
@@ -88,7 +90,6 @@ const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, f
 });
 function handleCSVFile(file) {
     return __awaiter(this, void 0, void 0, function* () {
-        const addresses = [];
         (0, fs_1.createReadStream)(file)
             .pipe((0, csv_parse_1.parse)({
             delimiter: ",",
@@ -110,19 +111,13 @@ function handleCSVFile(file) {
                 address: data["Recipient Address"],
                 date: data["Transaction Date"],
             };
-            addresses.push(location);
+            currentAddressSearches.push(location);
         })
             .on("end", () => __awaiter(this, void 0, void 0, function* () {
-            const fetchPromises = addresses.map((location) => __awaiter(this, void 0, void 0, function* () {
-                // Check if address already exists in the array
-                const existingLocation = addresses.find((addr) => addr.address === location.address);
-                // If it does, use the existing coordinates
-                if (existingLocation && existingLocation.latitude) {
-                    location.latitude = existingLocation.latitude;
-                    location.longitude = existingLocation.longitude;
-                }
-                // If it doesn't, fetch the coordinates
-                else {
+            const fetchPromises = currentAddressSearches.map((location) => __awaiter(this, void 0, void 0, function* () {
+                coordinatesExist(location);
+                // If location already has coordinates, skip the fetch
+                if (!location.latitude) {
                     try {
                         const { lat, lng } = yield fetchAddressCoordinates(location.address);
                         location.latitude = lat;
@@ -138,22 +133,39 @@ function handleCSVFile(file) {
             }));
             // Wait for all fetches to complete, so I don't write to the file before all coordinates are fetched (AGAIN)
             yield Promise.all(fetchPromises);
-            const fileExists = (0, fs_1.existsSync)(outputCSVFile);
-            // If output file doesn't already exist, include the headers
-            (0, csv_stringify_1.stringify)(addresses, {
-                header: !fileExists,
-                columns: ["name", "address", "date", "latitude", "longitude"],
-            }, (err, output) => {
-                if (err) {
-                    console.error(err);
-                }
-                else {
-                    (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
-                    console.log("My god we've done it!");
-                }
-            });
+            writeOutputCSV(currentAddressSearches);
         }));
     });
 }
-// getAddresses();
+const coordinatesExist = (location) => {
+    // Check if address already exists in the current batch
+    const existsInCurrentArray = currentAddressSearches.find((addr) => addr.address === location.address);
+    if (existsInCurrentArray && existsInCurrentArray.latitude) {
+        location.latitude = existsInCurrentArray.latitude;
+        location.longitude = existsInCurrentArray.longitude;
+        return;
+    }
+    // If it doesn't, check the address book
+    const existsInAddressBook = addressBook.find((addr) => addr.address === location.address);
+    if (existsInAddressBook) {
+        location.latitude = existsInAddressBook.latitude;
+        location.longitude = existsInAddressBook.longitude;
+    }
+};
+const writeOutputCSV = (addresses) => {
+    const fileExists = (0, fs_1.existsSync)(outputCSVFile);
+    // If output file doesn't already exist, include the headers
+    (0, csv_stringify_1.stringify)(addresses, {
+        header: !fileExists,
+        columns: ["name", "address", "date", "latitude", "longitude"],
+    }, (err, output) => {
+        if (err) {
+            console.error(err);
+        }
+        else {
+            (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
+            console.log("My god we've done it!");
+        }
+    });
+};
 readInputCSVDirectory();
