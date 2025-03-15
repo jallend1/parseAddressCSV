@@ -116,18 +116,36 @@ function handleCSVFile(file) {
             }));
             // Wait for all fetches to complete, so I don't write to the file before all coordinates are fetched (AGAIN)
             yield Promise.all(fetchPromises);
-            (0, csv_stringify_1.stringify)(addresses, {
-                header: true,
-                columns: ["name", "address", "date", "latitude", "longitude"],
-            }, (err, output) => {
-                if (err) {
-                    console.error(err);
-                }
-                else {
-                    (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
-                    console.log("My god we've done it!");
-                }
-            });
+            const fileExists = (0, fs_1.existsSync)(outputCSVFile);
+            if (!fileExists) {
+                (0, csv_stringify_1.stringify)(addresses, {
+                    header: true,
+                    columns: ["name", "address", "date", "latitude", "longitude"],
+                }, (err, output) => {
+                    if (err) {
+                        console.error(err);
+                    }
+                    else {
+                        (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
+                        console.log("My god we've done it!");
+                    }
+                });
+            }
+            else {
+                // If the file exists, append the data without the header
+                (0, csv_stringify_1.stringify)(addresses, {
+                    header: false,
+                    columns: ["name", "address", "date", "latitude", "longitude"],
+                }, (err, output) => {
+                    if (err) {
+                        console.error(err);
+                    }
+                    else {
+                        (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
+                        console.log("My god we've done it!");
+                    }
+                });
+            }
         }));
     });
 }

@@ -1,4 +1,11 @@
-import { createReadStream, writeFileSync, readdirSync, read } from "fs";
+import {
+  createReadStream,
+  writeFileSync,
+  readdirSync,
+  read,
+  exists,
+  existsSync,
+} from "fs";
 import { config } from "dotenv";
 import { parse } from "csv-parse";
 import { stringify } from "csv-stringify";
@@ -128,21 +135,41 @@ async function handleCSVFile(file: string) {
       // Wait for all fetches to complete, so I don't write to the file before all coordinates are fetched (AGAIN)
       await Promise.all(fetchPromises);
 
-      stringify(
-        addresses,
-        {
-          header: true,
-          columns: ["name", "address", "date", "latitude", "longitude"],
-        },
-        (err, output) => {
-          if (err) {
-            console.error(err);
-          } else {
-            writeFileSync(outputCSVFile, output, { flag: "a" });
-            console.log("My god we've done it!");
+      const fileExists = existsSync(outputCSVFile);
+      if (!fileExists) {
+        stringify(
+          addresses,
+          {
+            header: true,
+            columns: ["name", "address", "date", "latitude", "longitude"],
+          },
+          (err, output) => {
+            if (err) {
+              console.error(err);
+            } else {
+              writeFileSync(outputCSVFile, output, { flag: "a" });
+              console.log("My god we've done it!");
+            }
           }
-        }
-      );
+        );
+      } else {
+        // If the file exists, append the data without the header
+        stringify(
+          addresses,
+          {
+            header: false,
+            columns: ["name", "address", "date", "latitude", "longitude"],
+          },
+          (err, output) => {
+            if (err) {
+              console.error(err);
+            } else {
+              writeFileSync(outputCSVFile, output, { flag: "a" });
+              console.log("My god we've done it!");
+            }
+          }
+        );
+      }
     });
 }
 
