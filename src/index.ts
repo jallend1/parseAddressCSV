@@ -1,11 +1,4 @@
-import {
-  createReadStream,
-  writeFileSync,
-  readdirSync,
-  read,
-  exists,
-  existsSync,
-} from "fs";
+import { createReadStream, writeFileSync, readdirSync, existsSync } from "fs";
 import { config } from "dotenv";
 import { parse } from "csv-parse";
 import { stringify } from "csv-stringify";
@@ -15,10 +8,13 @@ const APIKEY = process.env.API_KEY;
 const APIURL: string = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 
 const inputCSVDirectory = "./data/";
-const inputCSVFile = "raw-sample.csv";
-// const inputCSVFile = "smallBatch.csv";
-// const inputCSVFile = "sampleAddresses.csv";
-const outputCSVFile = "sampleAddressesWithCoordinates.csv";
+const outputCSVFile = "withCoordinates.csv";
+// Stores addresses and coordinates to limit repetitive API calls
+const addressBook: {
+  address: string;
+  latitude: number;
+  longitude: number;
+}[] = [];
 
 // Format address for Google Maps API
 const formatAddress = (address: string) => address.split(" ").join("%20");
@@ -34,11 +30,35 @@ async function readInputCSVDirectory() {
     console.error("No CSV files found in the directory");
     return;
   }
+  // If there are files in the directory, check if the outut file already exists and load the existing addresses to search first
+  if (existsSync(outputCSVFile)) loadExistingAddresses(outputCSVFile);
+  return;
   for (const file of files) {
-    // TODO: Refactor getAddresses to process multiple files
-    // In addition to the file name, pass the file path to getAddresses
     handleCSVFile(inputCSVDirectory + file);
   }
+}
+
+// Load existing addresses and coordinates into memory
+async function loadExistingAddresses(file: string) {
+  createReadStream(file)
+    .pipe(
+      parse({
+        delimiter: ",",
+        columns: (header: string[]) =>
+          header.map((column: string) => column.trim()),
+      })
+    )
+    .on("data", (data: { [key: string]: string }) => {
+      const location = {
+        address: data.address,
+        latitude: parseFloat(data.latitude),
+        longitude: parseFloat(data.longitude),
+      };
+      addressBook.push(location);
+    })
+    .on("end", () => {
+      console.log("Existing address book found and loaded into memory.");
+    });
 }
 
 const fetchAddressCoordinates = async (address: string) => {
@@ -55,7 +75,7 @@ const fetchAddressCoordinates = async (address: string) => {
     return { lat: 0, lng: 0 };
   }
 
-  // If the geometry object is not present, return 0s
+  // If the geometry object is not present, return zeros
   if (!data.results[0].geometry) {
     return { lat: 0, lng: 0 };
   }
@@ -136,40 +156,22 @@ async function handleCSVFile(file: string) {
       await Promise.all(fetchPromises);
 
       const fileExists = existsSync(outputCSVFile);
-      if (!fileExists) {
-        stringify(
-          addresses,
-          {
-            header: true,
-            columns: ["name", "address", "date", "latitude", "longitude"],
-          },
-          (err, output) => {
-            if (err) {
-              console.error(err);
-            } else {
-              writeFileSync(outputCSVFile, output, { flag: "a" });
-              console.log("My god we've done it!");
-            }
+      // If output file doesn't already exist, include the headers
+      stringify(
+        addresses,
+        {
+          header: !fileExists,
+          columns: ["name", "address", "date", "latitude", "longitude"],
+        },
+        (err, output) => {
+          if (err) {
+            console.error(err);
+          } else {
+            writeFileSync(outputCSVFile, output, { flag: "a" });
+            console.log("My god we've done it!");
           }
-        );
-      } else {
-        // If the file exists, append the data without the header
-        stringify(
-          addresses,
-          {
-            header: false,
-            columns: ["name", "address", "date", "latitude", "longitude"],
-          },
-          (err, output) => {
-            if (err) {
-              console.error(err);
-            } else {
-              writeFileSync(outputCSVFile, output, { flag: "a" });
-              console.log("My god we've done it!");
-            }
-          }
-        );
-      }
+        }
+      );
     });
 }
 

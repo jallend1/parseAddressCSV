@@ -17,10 +17,9 @@ const csv_stringify_1 = require("csv-stringify");
 const APIKEY = process.env.API_KEY;
 const APIURL = `https://maps.googleapis.com/maps/api/geocode/json?key=${APIKEY}`;
 const inputCSVDirectory = "./data/";
-const inputCSVFile = "raw-sample.csv";
-// const inputCSVFile = "smallBatch.csv";
-// const inputCSVFile = "sampleAddresses.csv";
-const outputCSVFile = "sampleAddressesWithCoordinates.csv";
+const outputCSVFile = "withCoordinates.csv";
+// Stores addresses and coordinates to limit repetitive API calls
+const addressBook = [];
 // Format address for Google Maps API
 const formatAddress = (address) => address.split(" ").join("%20");
 // Read the input CSV directory and iterate through the files
@@ -35,11 +34,34 @@ function readInputCSVDirectory() {
             console.error("No CSV files found in the directory");
             return;
         }
+        // If there are files in the directory, check if the outut file already exists and load the existing addresses to search first
+        if ((0, fs_1.existsSync)(outputCSVFile))
+            loadExistingAddresses(outputCSVFile);
+        return;
         for (const file of files) {
-            // TODO: Refactor getAddresses to process multiple files
-            // In addition to the file name, pass the file path to getAddresses
             handleCSVFile(inputCSVDirectory + file);
         }
+    });
+}
+// Load existing addresses and coordinates into memory
+function loadExistingAddresses(file) {
+    return __awaiter(this, void 0, void 0, function* () {
+        (0, fs_1.createReadStream)(file)
+            .pipe((0, csv_parse_1.parse)({
+            delimiter: ",",
+            columns: (header) => header.map((column) => column.trim()),
+        }))
+            .on("data", (data) => {
+            const location = {
+                address: data.address,
+                latitude: parseFloat(data.latitude),
+                longitude: parseFloat(data.longitude),
+            };
+            addressBook.push(location);
+        })
+            .on("end", () => {
+            console.log("Existing address book found and loaded into memory.");
+        });
     });
 }
 const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, function* () {
@@ -54,7 +76,7 @@ const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, f
     if (data.status === "ZERO_RESULTS") {
         return { lat: 0, lng: 0 };
     }
-    // If the geometry object is not present, return 0s
+    // If the geometry object is not present, return zeros
     if (!data.results[0].geometry) {
         return { lat: 0, lng: 0 };
     }
@@ -117,35 +139,19 @@ function handleCSVFile(file) {
             // Wait for all fetches to complete, so I don't write to the file before all coordinates are fetched (AGAIN)
             yield Promise.all(fetchPromises);
             const fileExists = (0, fs_1.existsSync)(outputCSVFile);
-            if (!fileExists) {
-                (0, csv_stringify_1.stringify)(addresses, {
-                    header: true,
-                    columns: ["name", "address", "date", "latitude", "longitude"],
-                }, (err, output) => {
-                    if (err) {
-                        console.error(err);
-                    }
-                    else {
-                        (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
-                        console.log("My god we've done it!");
-                    }
-                });
-            }
-            else {
-                // If the file exists, append the data without the header
-                (0, csv_stringify_1.stringify)(addresses, {
-                    header: false,
-                    columns: ["name", "address", "date", "latitude", "longitude"],
-                }, (err, output) => {
-                    if (err) {
-                        console.error(err);
-                    }
-                    else {
-                        (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
-                        console.log("My god we've done it!");
-                    }
-                });
-            }
+            // If output file doesn't already exist, include the headers
+            (0, csv_stringify_1.stringify)(addresses, {
+                header: !fileExists,
+                columns: ["name", "address", "date", "latitude", "longitude"],
+            }, (err, output) => {
+                if (err) {
+                    console.error(err);
+                }
+                else {
+                    (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
+                    console.log("My god we've done it!");
+                }
+            });
         }));
     });
 }
