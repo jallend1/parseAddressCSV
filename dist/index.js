@@ -77,7 +77,12 @@ function loadExistingAddresses(file) {
     });
 }
 const isDuplicateTransaction = (trackingNumber) => {
-    return addressBook.find((addr) => addr.trackingNumber === trackingNumber);
+    const duplicate = addressBook.find((addr) => addr.trackingNumber === trackingNumber);
+    if (duplicate) {
+        console.log(`Duplicate transaction found for ${trackingNumber}`);
+        return true;
+    }
+    // return addressBook.find((addr) => addr.trackingNumber === trackingNumber);
 };
 const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, function* () {
     const formattedAddress = formatAddress(address);
@@ -112,9 +117,11 @@ function handleCSVFile(file) {
             header.map((column) => column.trim()),
         }))
             .on("data", (data) => {
-            // If the transaction date is empty, skip this row (Original file has these spread throughout)
-            if (data["Transaction Date"] === "")
+            // If the tracking number is empty or doesn't include the {, skip this row (Original file has these spread throughout)
+            if (!data["Package Tracking Number"] ||
+                !data["Package Tracking Number"].includes("{"))
                 return;
+            // if (!data["Package Tracking Number"].includes("{")) return;
             // If the recipient company name is empty, the recipient name has the desired info
             let name;
             data["Recipient Company"] === ""
@@ -146,6 +153,7 @@ function handleCSVFile(file) {
                     catch (error) {
                         // Return 0s for coordinates if fetch fails
                         console.error("Failed to fetch coordinates for: " + location.address);
+                        console.error(error);
                         location.latitude = 0;
                         location.longitude = 0;
                     }
@@ -190,7 +198,6 @@ const writeOutputCSV = (addresses) => {
             console.error(err);
         }
         else {
-            console.log(`Writing batch of ${addresses.length} addresses to file.`);
             (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
             // Once writefile sync is complete, add the addresses to the address book for the next batch
             addresses.forEach((address) => {
@@ -206,10 +213,8 @@ const writeOutputCSV = (addresses) => {
             });
             // Clear the current address searches
             currentAddressSearches.splice(0, currentAddressSearches.length);
-            console.log(`Address book now contains ${addressBook.length} entries.`);
             console.log(`My god we've done it! ${totalFetches} successful fetches made!`);
             console.log(`Output written to ${outputCSVFile}`);
-            console.log(`Total addresses processed: ${addresses.length}`);
         }
     });
 };
