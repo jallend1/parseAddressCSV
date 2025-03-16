@@ -20,6 +20,7 @@ const inputCSVDirectory = "./data/";
 const outputCSVFile = "withCoordinates.csv";
 // Stores addresses and coordinates to limit repetitive API calls
 const addressBook = [];
+let totalFetches = 0;
 // Stores the addresses to search in the current batch
 const currentAddressSearches = [];
 // Format address for Google Maps API
@@ -37,18 +38,19 @@ function readInputCSVDirectory() {
             return;
         }
         // If there are files in the directory, check if the outut file already exists and load the existing addresses to search first
-        if ((0, fs_1.existsSync)(outputCSVFile))
-            loadExistingAddresses(outputCSVFile);
-        return;
-        // TODO: Uncomment this when pre-API debugging is done
+        (0, fs_1.existsSync)(outputCSVFile)
+            ? loadExistingAddresses(outputCSVFile)
+            : console.log("No existing address book found.");
+        // return;
         for (const file of files) {
-            handleCSVFile(inputCSVDirectory + file);
+            yield handleCSVFile(inputCSVDirectory + file);
         }
     });
 }
 // Load existing addresses and coordinates into memory
 function loadExistingAddresses(file) {
     return __awaiter(this, void 0, void 0, function* () {
+        let count = 0;
         (0, fs_1.createReadStream)(file)
             .pipe((0, csv_parse_1.parse)({
             delimiter: ",",
@@ -59,16 +61,26 @@ function loadExistingAddresses(file) {
                 address: data.address,
                 latitude: parseFloat(data.latitude),
                 longitude: parseFloat(data.longitude),
+                trackingNumber: data.trackingNumber,
+                name: data.name,
+                date: data.date,
             };
+            count++;
+            // Check if address already exists in the address book and if so, skip it to keep it small
+            // if (addressBook.find((addr) => addr.address === location.address)) return;
             addressBook.push(location);
         })
             .on("end", () => {
-            console.log("Existing address book found and loaded into memory.");
+            console.log(`Existing address book found and ${addressBook.length} locations loaded into memory.`);
         });
     });
 }
+const isDuplicateTransaction = (trackingNumber) => {
+    return addressBook.find((addr) => addr.trackingNumber === trackingNumber);
+};
 const fetchAddressCoordinates = (address) => __awaiter(void 0, void 0, void 0, function* () {
     const formattedAddress = formatAddress(address);
+    totalFetches++;
     const response = yield fetch(`${APIURL}&address=${formattedAddress}`);
     if (!response.ok) {
         throw new Error("Failed to fetch address coordinates");
@@ -111,8 +123,14 @@ function handleCSVFile(file) {
                 name: name,
                 address: data["Recipient Address"],
                 date: data["Transaction Date"],
+                trackingNumber: data["Package Tracking Number"],
             };
-            currentAddressSearches.push(location);
+            if (!isDuplicateTransaction(data["Package Tracking Number"])) {
+                currentAddressSearches.push(location);
+            }
+            else {
+                console.log(`Duplicate transaction found for ${location.trackingNumber}`);
+            }
         })
             .on("end", () => __awaiter(this, void 0, void 0, function* () {
             const fetchPromises = currentAddressSearches.map((location) => __awaiter(this, void 0, void 0, function* () {
@@ -139,6 +157,12 @@ function handleCSVFile(file) {
     });
 }
 const coordinatesExist = (location) => {
+    // Check if cooordinates already exist in the address book
+    const existsInAddressBook = addressBook.find((addr) => addr.address === location.address);
+    if (existsInAddressBook) {
+        location.latitude = existsInAddressBook.latitude;
+        location.longitude = existsInAddressBook.longitude;
+    }
     // Check if address already exists in the current batch
     const existsInCurrentArray = currentAddressSearches.find((addr) => addr.address === location.address);
     if (existsInCurrentArray && existsInCurrentArray.latitude) {
@@ -146,26 +170,45 @@ const coordinatesExist = (location) => {
         location.longitude = existsInCurrentArray.longitude;
         return;
     }
-    // If it doesn't, check the address book
-    const existsInAddressBook = addressBook.find((addr) => addr.address === location.address);
-    if (existsInAddressBook) {
-        location.latitude = existsInAddressBook.latitude;
-        location.longitude = existsInAddressBook.longitude;
-    }
 };
 const writeOutputCSV = (addresses) => {
     const fileExists = (0, fs_1.existsSync)(outputCSVFile);
     // If output file doesn't already exist, include the headers
     (0, csv_stringify_1.stringify)(addresses, {
         header: !fileExists,
-        columns: ["name", "address", "date", "latitude", "longitude"],
+        columns: [
+            "name",
+            "address",
+            "date",
+            "latitude",
+            "longitude",
+            "trackingNumber",
+        ],
     }, (err, output) => {
         if (err) {
             console.error(err);
         }
         else {
+            console.log(`Writing batch of ${addresses.length} addresses to file.`);
             (0, fs_1.writeFileSync)(outputCSVFile, output, { flag: "a" });
-            console.log("My god we've done it!");
+            // Once writefile sync is complete, add the addresses to the address book for the next batch
+            addresses.forEach((address) => {
+                var _a, _b;
+                addressBook.push({
+                    name: address.name,
+                    date: address.date,
+                    address: address.address,
+                    latitude: (_a = address.latitude) !== null && _a !== void 0 ? _a : 0,
+                    longitude: (_b = address.longitude) !== null && _b !== void 0 ? _b : 0,
+                    trackingNumber: address.trackingNumber,
+                });
+            });
+            // Clear the current address searches
+            currentAddressSearches.splice(0, currentAddressSearches.length);
+            console.log(`Address book now contains ${addressBook.length} entries.`);
+            console.log(`My god we've done it! ${totalFetches} successful fetches made!`);
+            console.log(`Output written to ${outputCSVFile}`);
+            console.log(`Total addresses processed: ${addresses.length}`);
         }
     });
 };

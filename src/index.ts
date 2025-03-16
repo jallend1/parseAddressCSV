@@ -11,16 +11,22 @@ const inputCSVDirectory = "./data/";
 const outputCSVFile = "withCoordinates.csv";
 // Stores addresses and coordinates to limit repetitive API calls
 const addressBook: {
+  name: string;
   address: string;
-  latitude: number;
-  longitude: number;
+  date: string;
+  trackingNumber: string;
+  latitude?: number;
+  longitude?: number;
 }[] = [];
+
+let totalFetches = 0;
 
 // Stores the addresses to search in the current batch
 const currentAddressSearches: {
   name: string;
   address: string;
   date: string;
+  trackingNumber: string;
   latitude?: number;
   longitude?: number;
 }[] = [];
@@ -40,17 +46,19 @@ async function readInputCSVDirectory() {
     return;
   }
   // If there are files in the directory, check if the outut file already exists and load the existing addresses to search first
-  if (existsSync(outputCSVFile)) loadExistingAddresses(outputCSVFile);
-  return;
+  existsSync(outputCSVFile)
+    ? loadExistingAddresses(outputCSVFile)
+    : console.log("No existing address book found.");
 
-  // TODO: Uncomment this when pre-API debugging is done
+  // return;
   for (const file of files) {
-    handleCSVFile(inputCSVDirectory + file);
+    await handleCSVFile(inputCSVDirectory + file);
   }
 }
 
 // Load existing addresses and coordinates into memory
 async function loadExistingAddresses(file: string) {
+  let count = 0;
   createReadStream(file)
     .pipe(
       parse({
@@ -64,16 +72,30 @@ async function loadExistingAddresses(file: string) {
         address: data.address,
         latitude: parseFloat(data.latitude),
         longitude: parseFloat(data.longitude),
+        trackingNumber: data.trackingNumber,
+        name: data.name,
+        date: data.date,
       };
+
+      count++;
+      // Check if address already exists in the address book and if so, skip it to keep it small
+      // if (addressBook.find((addr) => addr.address === location.address)) return;
       addressBook.push(location);
     })
     .on("end", () => {
-      console.log("Existing address book found and loaded into memory.");
+      console.log(
+        `Existing address book found and ${addressBook.length} locations loaded into memory.`
+      );
     });
 }
 
+const isDuplicateTransaction = (trackingNumber: string) => {
+  return addressBook.find((addr) => addr.trackingNumber === trackingNumber);
+};
+
 const fetchAddressCoordinates = async (address: string) => {
   const formattedAddress = formatAddress(address);
+  totalFetches++;
   const response = await fetch(`${APIURL}&address=${formattedAddress}`);
   if (!response.ok) {
     throw new Error("Failed to fetch address coordinates");
@@ -111,19 +133,25 @@ async function handleCSVFile(file: string) {
     .on("data", (data: { [key: string]: string }) => {
       // If the transaction date is empty, skip this row (Original file has these spread throughout)
       if (data["Transaction Date"] === "") return;
-
       // If the recipient company name is empty, the recipient name has the desired info
       let name;
       data["Recipient Company"] === ""
         ? (name = data["Recipient Name"])
         : (name = data["Recipient Company"]);
-
       const location = {
         name: name,
         address: data["Recipient Address"],
         date: data["Transaction Date"],
+        trackingNumber: data["Package Tracking Number"],
       };
-      currentAddressSearches.push(location);
+
+      if (!isDuplicateTransaction(data["Package Tracking Number"])) {
+        currentAddressSearches.push(location);
+      } else {
+        console.log(
+          `Duplicate transaction found for ${location.trackingNumber}`
+        );
+      }
     })
     .on("end", async () => {
       const fetchPromises = currentAddressSearches.map(async (location) => {
@@ -158,7 +186,16 @@ const coordinatesExist = (location: {
   date: string;
   latitude?: number;
   longitude?: number;
+  trackingNumber: string;
 }) => {
+  // Check if cooordinates already exist in the address book
+  const existsInAddressBook = addressBook.find(
+    (addr) => addr.address === location.address
+  );
+  if (existsInAddressBook) {
+    location.latitude = existsInAddressBook.latitude;
+    location.longitude = existsInAddressBook.longitude;
+  }
   // Check if address already exists in the current batch
   const existsInCurrentArray = currentAddressSearches.find(
     (addr) => addr.address === location.address
@@ -167,14 +204,6 @@ const coordinatesExist = (location: {
     location.latitude = existsInCurrentArray.latitude;
     location.longitude = existsInCurrentArray.longitude;
     return;
-  }
-  // If it doesn't, check the address book
-  const existsInAddressBook = addressBook.find(
-    (addr) => addr.address === location.address
-  );
-  if (existsInAddressBook) {
-    location.latitude = existsInAddressBook.latitude;
-    location.longitude = existsInAddressBook.longitude;
   }
 };
 
@@ -185,6 +214,7 @@ const writeOutputCSV = (
     date: string;
     latitude?: number;
     longitude?: number;
+    trackingNumber: string;
   }[]
 ) => {
   const fileExists = existsSync(outputCSVFile);
@@ -193,14 +223,40 @@ const writeOutputCSV = (
     addresses,
     {
       header: !fileExists,
-      columns: ["name", "address", "date", "latitude", "longitude"],
+      columns: [
+        "name",
+        "address",
+        "date",
+        "latitude",
+        "longitude",
+        "trackingNumber",
+      ],
     },
     (err, output) => {
       if (err) {
         console.error(err);
       } else {
+        console.log(`Writing batch of ${addresses.length} addresses to file.`);
         writeFileSync(outputCSVFile, output, { flag: "a" });
-        console.log("My god we've done it!");
+        // Once writefile sync is complete, add the addresses to the address book for the next batch
+        addresses.forEach((address) => {
+          addressBook.push({
+            name: address.name,
+            date: address.date,
+            address: address.address,
+            latitude: address.latitude ?? 0,
+            longitude: address.longitude ?? 0,
+            trackingNumber: address.trackingNumber,
+          });
+        });
+        // Clear the current address searches
+        currentAddressSearches.splice(0, currentAddressSearches.length);
+        console.log(`Address book now contains ${addressBook.length} entries.`);
+        console.log(
+          `My god we've done it! ${totalFetches} successful fetches made!`
+        );
+        console.log(`Output written to ${outputCSVFile}`);
+        console.log(`Total addresses processed: ${addresses.length}`);
       }
     }
   );
