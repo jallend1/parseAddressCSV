@@ -41,10 +41,11 @@ async function readInputCSVDirectory() {
     console.error("No files found in the directory");
     return;
   }
-  if (files.filter((file) => file.endsWith(".csv")).length === 0) {
-    console.error("No compatible files found in the directory");
-    return;
-  }
+  // TODO: Batch converted xls to csv, but xls extension stayed the same so ignoring it for now
+  // if (files.filter((file) => file.endsWith(".csv")).length === 0) {
+  //   console.error("No compatible files found in the directory");
+  //   return;
+  // }
   // If there are files in the directory, check if the outut file already exists and load the existing addresses to search first
   existsSync(outputCSVFile)
     ? loadExistingAddresses(outputCSVFile)
